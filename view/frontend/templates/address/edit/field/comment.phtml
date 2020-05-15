@@ -3,14 +3,14 @@
 ?>
 <?php if ($block->getStatusLogin() == true) : ?>
 <p style="font-size: 15px;">
-    <b>Attachment</b>
-    (Upload any relevant file e.g. screenshot of website error)
+    <b><?php echo __('Attachment'); ?></b>
+    <?php echo __('(Upload any relevant file e.g. screenshot of website error)'); ?>
 </p>
 <p id="file_error" class="message-error error message" style="display:none;">
-    File is too large
+    <?php echo __('(File is too large)'); ?>
 </p>
 <p class="file">
-    File must be less than 2MB and in any of these formats: .jpg, .png, .gif, .pdf, .docx
+    <?php echo __('(File must be less than 2MB and in any of these formats: .jpg, .png, .gif, .pdf, .docx)'); ?>
 </p>
 <input id="file-btn" accept=".pdf, .png, .jpg, .gif, .docx, .jpeg/*" name="document" type="file" value="">
 <script type="text/javascript" xml="space">
@@ -29,5 +29,5 @@ require(['jquery'], function ($) {
 });
 </script>
 <?php else : ?>
-<p>Please register for file attachment</p>
+<p><?php echo __('Please register for file attachment '); ?></p>
 <?php endif; ?>
