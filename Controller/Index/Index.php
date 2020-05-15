@@ -4,7 +4,7 @@
  * Copyright © 2016 Magento. All rights reserved.
  * See COPYING.txt for license details.
  */
-namespace Hashcrypt\Contact\Controller\Index;
+namespace Davidev\Contact\Controller\Index;
 
 
 use Magento\Framework\App\Action\Action;
@@ -27,7 +27,6 @@ class Index extends \Magento\Contact\Controller\Index\Post
     private $fileUploaderFactory;
     private $fileSystem;
 
-
     /**
      * @var \Magento\Framework\Mail\Template\TransportBuilder
      */
@@ -42,7 +41,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
      * @var \Magento\Framework\App\Config\ScopeConfigInterface
      */
     protected $scopeConfig;
-     protected $storeManager;
+    protected $storeManager;
 
     /**
      * @var \Magento\Store\Model\StoreManagerInterface
@@ -51,13 +50,15 @@ class Index extends \Magento\Contact\Controller\Index\Post
 
     /**
      * @param \Magento\Framework\App\Action\Context $context
+     * @param \Magento\Framework\Model\Session $session
      * @param \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder
      * @param \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      */
 
-     public function __construct(
+    public function __construct(
         \Magento\Framework\App\Action\Context $context,
+        \Magento\Customer\Model\Session $session,
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
         \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
@@ -104,7 +105,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
                 $error = true;
             }
             $filesData = $this->getRequest()->getFiles('document');
-       
+
             if ($filesData['name']) {
                 try {
                 // init uploader model.
@@ -190,7 +191,4 @@ class Index extends \Magento\Contact\Controller\Index\Post
 
         return $this->dataPersistor;
     }
-
-   
-
 }
