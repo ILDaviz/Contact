@@ -1,4 +1,4 @@
-# m2-contact-file-upload
+# Magento 2.x Add file upload to contact form
 # update 1.0.0
 
 This extension allow you to add file upload in customer contact form.
