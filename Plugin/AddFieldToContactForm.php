@@ -1,9 +1,9 @@
 <?php
-namespace Hashcrypt\Contact\Plugin;
+namespace Daviz\Contact\Plugin;
 
 use Magento\Contact\Block\ContactForm as Subject;
 use Magento\Framework\View\Element\Template;
-use Hashcrypt\Contact\Block\Attachment as CommentBlock;
+use Daviz\Contact\Block\Attachment as CommentBlock;
 
 /**
  * Class AddFieldToContactForm
@@ -34,7 +34,7 @@ class AddFieldToContactForm
      */
     private function appendBlockBeforeFieldsetEnd(string $html, string $childHtml) : string
     {
-        $pregMatch = '/\<\/fieldset>/';  
+        $pregMatch = '/\<\/fieldset>/';
         $pregReplace = $childHtml . '\0';
         $html = preg_replace($pregMatch, $pregReplace, $html, 1);
 

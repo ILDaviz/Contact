@@ -1,5 +1,6 @@
 <?php
-namespace Hashcrypt\Contact\Magento\Mail\Template;
+namespace Daviz\Contact\Magento\Mail\Template;
+
 
 class TransportBuilder extends \Magento\Framework\Mail\Template\TransportBuilder
 {

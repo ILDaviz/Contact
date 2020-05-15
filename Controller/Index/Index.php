@@ -4,7 +4,7 @@
  * Copyright © 2016 Magento. All rights reserved.
  * See COPYING.txt for license details.
  */
-namespace Davidev\Contact\Controller\Index;
+namespace Daviz\Contact\Controller\Index;
 
 
 use Magento\Framework\App\Action\Action;
@@ -13,7 +13,13 @@ use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\Filesystem;
 use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Framework\App\ObjectManager;
-
+use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
+use Magento\Contact\Model\ConfigInterface;
+use Magento\Contact\Model\MailInterface;
+use Magento\Framework\Controller\Result\Redirect;
+use Magento\Framework\Exception\LocalizedException;
+use Psr\Log\LoggerInterface;
+use Magento\Framework\DataObject;
 
 
 class Index extends \Magento\Contact\Controller\Index\Post
@@ -26,6 +32,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
     protected $context;
     private $fileUploaderFactory;
     private $fileSystem;
+
 
     /**
      * @var \Magento\Framework\Mail\Template\TransportBuilder
@@ -50,25 +57,30 @@ class Index extends \Magento\Contact\Controller\Index\Post
 
     /**
      * @param \Magento\Framework\App\Action\Context $context
-     * @param \Magento\Framework\Model\Session $session
      * @param \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder
      * @param \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
      */
 
     public function __construct(
-        \Magento\Framework\App\Action\Context $context,
-        \Magento\Customer\Model\Session $session,
+        Context $context,
+        ConfigInterface $contactsConfig,
+        MailInterface $mail,
+        DataPersistorInterface $dataPersistor,
+        LoggerInterface $logger = null,
+        Filesystem $fileSystem,
         \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
         \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Store\Model\StoreManagerInterface $storeManager,
-        Filesystem $fileSystem,
         \Magento\MediaStorage\Model\File\UploaderFactory $fileUploaderFactory
-    ) {
+    )
+    {
         $this->fileUploaderFactory = $fileUploaderFactory;
-        $this->fileSystem          = $fileSystem;
-        parent::__construct($context,$transportBuilder,$inlineTranslation,$scopeConfig,$storeManager);
+        $this->fileSystem = $fileSystem;
+        $this->inlineTranslation = $inlineTranslation;
+        $this->_transportBuilder = $transportBuilder;
+        $this->scopeConfig = $scopeConfig;
+        parent::__construct($context, $contactsConfig, $mail, $dataPersistor, $logger);
     }
 
     /**
@@ -108,7 +120,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
 
             if ($filesData['name']) {
                 try {
-                // init uploader model.
+                    // init uploader model.
                     $uploader = $this->fileUploaderFactory->create(['fileId' => 'document']);
                     $uploader->setAllowRenameFiles(true);
                     $uploader->setFilesDispersion(true);
@@ -116,10 +128,10 @@ class Index extends \Magento\Contact\Controller\Index\Post
                     $uploader->setAllowedExtensions(['jpg', 'jpeg', 'gif', 'png', 'pdf', 'docx']);
                     $path = $this->fileSystem->getDirectoryRead(DirectoryList::MEDIA)->getAbsolutePath('contact-doc');
                     $result = $uploader->save($path);
-                    $upload_document = 'contact-doc'.$uploader->getUploadedFilename();
-                    $filePath = $result['path'].$result['file'];
+                    $upload_document = 'contact-doc' . $uploader->getUploadedFilename();
+                    $filePath = $result['path'] . $result['file'];
                     $fileName = $result['name'];
-                }catch (\Exception $e) {
+                } catch (\Exception $e) {
                     $this->inlineTranslation->resume();
                     $this->messageManager->addError(
                         __('File format not supported.')
@@ -128,7 +140,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
                     $this->_redirect('contact');
                     return;
                 }
-                
+
             } else {
                 $upload_document = '';
                 $filePath = '';
@@ -153,7 +165,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
                 ->setTemplateVars(['data' => $postObject])
                 ->setFrom($this->scopeConfig->getValue(self::XML_PATH_EMAIL_SENDER, $storeScope))
                 ->addTo($this->scopeConfig->getValue(self::XML_PATH_EMAIL_RECIPIENT, $storeScope))
-                ->addAttachment($filePath, $fileName) 
+                ->addAttachment($filePath, $fileName)
                 ->setReplyTo($post['email'])
                 ->getTransport();
 
@@ -177,6 +189,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
             return;
         }
     }
+
     /**
      * Get Data Persistor
      *
