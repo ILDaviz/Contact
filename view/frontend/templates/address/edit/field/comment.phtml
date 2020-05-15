@@ -16,9 +16,9 @@
 <script type="text/javascript" xml="space">
 require(['jquery'], function ($) {
     jQuery(document).ready(function($){
-        var uploadField = document.getElementById("file-btn");
+        let uploadField = document.getElementById("file-btn");
         uploadField.onchange = function() {
-            if(this.files[0].size > 2048){
+            if(this.files[0].size >= 2121829){
                 $('#file_error').show();
                 this.value = "";
             }else{

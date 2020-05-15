@@ -6,21 +6,18 @@
  */
 namespace Daviz\Contact\Controller\Index;
 
-
-use Magento\Framework\App\Action\Action;
-use Magento\Framework\App\Action\Context;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\Filesystem;
-use Magento\Framework\App\Request\DataPersistorInterface;
-use Magento\Framework\App\ObjectManager;
-use Magento\Framework\App\Action\HttpPostActionInterface as HttpPostActionInterface;
 use Magento\Contact\Model\ConfigInterface;
 use Magento\Contact\Model\MailInterface;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Framework\App\ObjectManager;
+use Magento\Framework\App\Request\DataPersistorInterface;
+use Magento\Framework\Filesystem;
+use Magento\Framework\Mail\Template\TransportBuilder;
+use Magento\Framework\Translate\Inline\StateInterface;
+use Magento\MediaStorage\Model\File\UploaderFactory;
 use Psr\Log\LoggerInterface;
-use Magento\Framework\DataObject;
-
 
 class Index extends \Magento\Contact\Controller\Index\Post
 {
@@ -32,34 +29,43 @@ class Index extends \Magento\Contact\Controller\Index\Post
     protected $context;
     private $fileUploaderFactory;
     private $fileSystem;
-
+    private $contactsConfig;
 
     /**
-     * @var \Magento\Framework\Mail\Template\TransportBuilder
+     * @var TransportBuilder
      */
     protected $_transportBuilder;
 
     /**
-     * @var \Magento\Framework\Translate\Inline\StateInterface
+     * @var StateInterface
      */
     protected $inlineTranslation;
 
     /**
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     * @var ScopeConfigInterface
      */
     protected $scopeConfig;
     protected $storeManager;
-
     /**
      * @var \Magento\Store\Model\StoreManagerInterface
      */
 
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
     /**
      * @param \Magento\Framework\App\Action\Context $context
-     * @param \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder
-     * @param \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     * @param ConfigInterface $contactsConfig
+     * @param MailInterface $mail
+     * @param DataPersistorInterface $dataPersistor
+     * @param LoggerInterface|null $logger
+     * @param Filesystem $fileSystem
+     * @param TransportBuilder $transportBuilder
+     * @param StateInterface $inlineTranslation
+     * @param ScopeConfigInterface $scopeConfig
+     * @param UploaderFactory $fileUploaderFactory
      */
 
     public function __construct(
@@ -69,17 +75,19 @@ class Index extends \Magento\Contact\Controller\Index\Post
         DataPersistorInterface $dataPersistor,
         LoggerInterface $logger = null,
         Filesystem $fileSystem,
-        \Magento\Framework\Mail\Template\TransportBuilder $transportBuilder,
-        \Magento\Framework\Translate\Inline\StateInterface $inlineTranslation,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\MediaStorage\Model\File\UploaderFactory $fileUploaderFactory
-    )
-    {
+        TransportBuilder $transportBuilder,
+        StateInterface $inlineTranslation,
+        ScopeConfigInterface $scopeConfig,
+        UploaderFactory $fileUploaderFactory
+    ) {
         $this->fileUploaderFactory = $fileUploaderFactory;
         $this->fileSystem = $fileSystem;
         $this->inlineTranslation = $inlineTranslation;
         $this->_transportBuilder = $transportBuilder;
         $this->scopeConfig = $scopeConfig;
+        $this->contactsConfig = $contactsConfig;
+        $this->logger = $logger;
+
         parent::__construct($context, $contactsConfig, $mail, $dataPersistor, $logger);
     }
 
@@ -133,47 +141,46 @@ class Index extends \Magento\Contact\Controller\Index\Post
                     $fileName = $result['name'];
                 } catch (\Exception $e) {
                     $this->inlineTranslation->resume();
-                    $this->messageManager->addError(
+                    $this->messageManager->addErrorMessage(
                         __('File format not supported.')
                     );
                     $this->getDataPersistor()->set('contact', $post);
                     $this->_redirect('contact');
                     return;
                 }
-
             } else {
                 $upload_document = '';
                 $filePath = '';
                 $fileName = '';
             }
+
             if ($error) {
                 throw new \Exception();
             }
 
             $this->inlineTranslation->suspend();
 
-
             $storeScope = \Magento\Store\Model\ScopeInterface::SCOPE_STORE;
+
             $transport = $this->_transportBuilder
-                ->setTemplateIdentifier($this->scopeConfig->getValue(self::XML_PATH_EMAIL_TEMPLATE, $storeScope))
+                ->setTemplateIdentifier('contact_email_email_template')
                 ->setTemplateOptions(
                     [
-                        'area' => \Magento\Backend\App\Area\FrontNameResolver::AREA_CODE,
+                        'area' => \Magento\Framework\App\Area::AREA_FRONTEND,
                         'store' => \Magento\Store\Model\Store::DEFAULT_STORE_ID,
                     ]
                 )
                 ->setTemplateVars(['data' => $postObject])
-                ->setFrom($this->scopeConfig->getValue(self::XML_PATH_EMAIL_SENDER, $storeScope))
+                ->setFromByScope($this->scopeConfig->getValue(self::XML_PATH_EMAIL_SENDER, $storeScope))
                 ->addTo($this->scopeConfig->getValue(self::XML_PATH_EMAIL_RECIPIENT, $storeScope))
                 ->addAttachment($filePath, $fileName)
                 ->setReplyTo($post['email'])
                 ->getTransport();
 
-
             $transport->sendMessage();
 
             $this->inlineTranslation->resume();
-            $this->messageManager->addSuccess(
+            $this->messageManager->addSuccessMessage(
                 __('Thanks for contacting us with your comments and questions. We\'ll respond to you very soon.')
             );
             $this->getDataPersistor()->clear('contact_us');
@@ -181,7 +188,7 @@ class Index extends \Magento\Contact\Controller\Index\Post
             return;
         } catch (\Exception $e) {
             $this->inlineTranslation->resume();
-            $this->messageManager->addError(
+            $this->messageManager->addErrorMessage(
                 __('We can\'t process your request right now. Sorry, that\'s all we know.')
             );
             $this->getDataPersistor()->set('contact_us', $post);
